@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BEAT FBIT - Платформер</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(to bottom, #1a2980, #26d0ce);
+            font-family: Arial, sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+        
+        h1 {
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .game-container {
+            position: relative;
+            margin: 20px 0;
+        }
+        
+        canvas {
+            border: 3px solid #333;
+            background: linear-gradient(to bottom, #87CEEB, #E0F7FF);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+        
+        .controls {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            max-width: 600px;
+            text-align: center;
+        }
+        
+        .console {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #0f0;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            display: none;
+            width: 300px;
+            z-index: 10;
+        }
+        
+        .console-input {
+            background: transparent;
+            border: none;
+            color: #0f0;
+            font-family: monospace;
+            width: 100%;
+            outline: none;
+        }
+        
+        .message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+            z-index: 20;
+        }
+        
+        button {
+            background: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 10px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        .debug-info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            color: white;
+            display: none;
+        }
+        
+        .game-status {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-family: Arial;
+            font-size: 14px;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎮 BEAT FBIT - Платформер</h1>
+    
+    <div class="game-container">
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
+        
+        <div class="game-status">
+            <div>Доберитесь до выхода, избегая шипов!</div>
+        </div>
+        
+        <div class="debug-info" id="debugInfo">
+            <div>X: <span id="playerX">0</span></div>
+            <div>Y: <span id="playerY">0</span></div>
+            <div>Grounded: <span id="playerGrounded">false</span></div>
+        </div>
+        
+        <div class="console" id="console">
+            <div>Консоль разработчика:</div>
+            <input type="text" class="console-input" id="consoleInput" placeholder="Введите команду...">
+        </div>
+        
+        <div class="message" id="winMessage">
+            <h2>Победа!</h2>
+            <p>Вы достигли выхода!</p>
+            <button id="restartButton">Играть снова</button>
+        </div>
+        
+        <div class="message" id="loseMessage">
+            <h2>Поражение!</h2>
+            <p>Вы попали на шипы!</p>
+            <button id="restartButtonLose">Играть снова</button>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <h3>Управление:</h3>
+        <p>← → - Движение влево/вправо</p>
+        <p>↑ или Пробел - Прыжок</p>
+    </div>
+
+    <script>
+        // Получаем элементы
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const consoleElement = document.getElementById('console');
+        const consoleInput = document.getElementById('consoleInput');
+        const winMessage = document.getElementById('winMessage');
+        const loseMessage = document.getElementById('loseMessage');
+        const restartButton = document.getElementById('restartButton');
+        const restartButtonLose = document.getElementById('restartButtonLose');
+        const debugInfoElement = document.getElementById('debugInfo');
+        
+        // Элементы отладки
+        const playerXElement = document.getElementById('playerX');
+        const playerYElement = document.getElementById('playerY');
+        const playerGroundedElement = document.getElementById('playerGrounded');
+        
+        // Игровые переменные
+        let gameActive = true;
+        let showDebugInfo = false;
+        let player = {
+            x: 50,
+            y: 300,
+            width: 30,
+            height: 50,
+            speed: 5,
+            velX: 0,
+            velY: 0,
+            jumping: false,
+            jumpForce: 12,
+            grounded: false,
+            color: '#3498db'
+        };
+        
+        let originalJumpForce = player.jumpForce;
+        let originalPlayerScale = 1;
+        let playerScale = 1;
+        
+        // Платформы и препятствия
+        const platforms = [
+            {x: 0, y: 350, width: 200, height: 50, color: '#2ecc71'}, // Левая платформа
+            {x: 600, y: 350, width: 200, height: 50, color: '#2ecc71'}, // Правая платформа
+        ];
+        
+        // Шипы под землей (ниже уровня платформ)
+        const spikes = [
+            // Шипы под землей в яме
+            {x: 200, y: 400, width: 400, height: 50, color: '#e74c3c'}
+        ];
+        
+        const exit = {
+            x: 750,
+            y: 300,
+            width: 30,
+            height: 50,
+            color: '#f1c40f'
+        };
+        
+        // Клавиши
+        const keys = {};
+        
+        // Гравитация
+        const gravity = 0.5;
+        
+        // Функция обновления игры
+        function update() {
+            if (!gameActive) return;
+            
+            // Применяем гравитацию
+            player.velY += gravity;
+            
+            // Движение влево/вправо
+            if (keys[37] || keys[65]) { // Левая стрелка или A
+                player.velX = -player.speed;
+            }
+            if (keys[39] || keys[68]) { // Правая стрелка или D
+                player.velX = player.speed;
+            }
+            
+            // Прыжок
+            if ((keys[38] || keys[32] || keys[87]) && player.grounded) { // Вверх, пробел или W
+                player.velY = -player.jumpForce;
+                player.jumping = true;
+                player.grounded = false;
+            }
+            
+            // Применяем скорость
+            player.x += player.velX;
+            player.y += player.velY;
+            
+            // Замедление по X (трение)
+            player.velX *= 0.8;
+            
+            // Проверка столкновений с платформами
+            player.grounded = false;
+            
+            platforms.forEach(platform => {
+                const collision = checkCollision(player, platform);
+                
+                if (collision) {
+                    // Определяем направление столкновения
+                    const playerBottom = player.y + player.height * playerScale;
+                    const platformTop = platform.y;
+                    const playerTop = player.y;
+                    const platformBottom = platform.y + platform.height;
+                    
+                    // Если игрок падает на платформу сверху
+                    if (player.velY > 0 && playerBottom - player.velY <= platformTop) {
+                        player.y = platformTop - player.height * playerScale;
+                        player.velY = 0;
+                        player.grounded = true;
+                        player.jumping = false;
+                    }
+                    // Если игрок ударяется о платформу снизу
+                    else if (player.velY < 0 && playerTop - player.velY >= platformBottom) {
+                        player.y = platformBottom;
+                        player.velY = 0;
+                    }
+                    
+                    // Боковые столкновения
+                    const playerRight = player.x + player.width * playerScale;
+                    const playerLeft = player.x;
+                    const platformRight = platform.x + platform.width;
+                    const platformLeft = platform.x;
+                    
+                    // Если игрок движется вправо и сталкивается с левой стороной платформы
+                    if (player.velX > 0 && playerRight - player.velX <= platformLeft) {
+                        player.x = platformLeft - player.width * playerScale;
+                        player.velX = 0;
+                    }
+                    // Если игрок движется влево и сталкивается с правой стороной платформы
+                    else if (player.velX < 0 && playerLeft - player.velX >= platformRight) {
+                        player.x = platformRight;
+                        player.velX = 0;
+                    }
+                }
+            });
+            
+            // Проверка столкновений с шипами (под землей)
+            let onSpikes = false;
+            spikes.forEach(spike => {
+                if (checkCollision(player, spike)) {
+                    onSpikes = true;
+                }
+            });
+            
+            if (onSpikes) {
+                gameActive = false;
+                loseMessage.style.display = 'block';
+                return;
+            }
+            
+            // Проверка достижения выхода
+            if (checkCollision(player, exit)) {
+                gameActive = false;
+                winMessage.style.display = 'block';
+                return;
+            }
+            
+            // Ограничение игрока в пределах canvas
+            if (player.x < 0) {
+                player.x = 0;
+            } else if (player.x + player.width * playerScale > canvas.width) {
+                player.x = canvas.width - player.width * playerScale;
+            }
+            
+            if (player.y < 0) {
+                player.y = 0;
+                player.velY = 0;
+            } else if (player.y + player.height * playerScale > canvas.height) {
+                player.y = canvas.height - player.height * playerScale;
+                player.grounded = true;
+                player.velY = 0;
+            }
+            
+            // Обновление отладочной информации
+            updateDebugInfo();
+        }
+        
+        // Функция проверки столкновений
+        function checkCollision(obj1, obj2) {
+            const obj1Right = obj1.x + obj1.width * (obj1 === player ? playerScale : 1);
+            const obj1Bottom = obj1.y + obj1.height * (obj1 === player ? playerScale : 1);
+            const obj2Right = obj2.x + obj2.width;
+            const obj2Bottom = obj2.y + obj2.height;
+            
+            return obj1.x < obj2Right &&
+                   obj1Right > obj2.x &&
+                   obj1.y < obj2Bottom &&
+                   obj1Bottom > obj2.y;
+        }
+        
+        // Функция отрисовки игры
+        function draw() {
+            // Очистка canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Рисуем фон ямы
+            ctx.fillStyle = '#34495e';
+            ctx.fillRect(200, 350, 400, 50);
+            
+            // Рисуем платформы
+            platforms.forEach(platform => {
+                ctx.fillStyle = platform.color;
+                ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                
+                // Текстура травы
+                ctx.fillStyle = '#27ae60';
+                ctx.fillRect(platform.x, platform.y, platform.width, 10);
+                
+                // Боковые текстуры платформ
+                ctx.fillStyle = '#239b56';
+                ctx.fillRect(platform.x, platform.y, 10, platform.height);
+                ctx.fillRect(platform.x + platform.width - 10, platform.y, 10, platform.height);
+            });
+            
+            // Рисуем землю под платформами
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(0, 400, canvas.width, 50);
+            
+            // Рисуем шипы под землей (видимые только в отладке)
+            spikes.forEach(spike => {
+                // Шипы под землей - рисуем их как скрытые
+                ctx.fillStyle = 'rgba(231, 76, 60, 0.3)'; // Полупрозрачные для отладки
+                ctx.fillRect(spike.x, spike.y, spike.width, spike.height);
+                
+                // Рисуем треугольники-шипы (тоже полупрозрачные)
+                ctx.fillStyle = 'rgba(192, 57, 43, 0.3)';
+                const spikeWidth = spike.width / 20;
+                for (let i = 0; i < 20; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(spike.x + i * spikeWidth, spike.y);
+                    ctx.lineTo(spike.x + (i + 0.5) * spikeWidth, spike.y - 20);
+                    ctx.lineTo(spike.x + (i + 1) * spikeWidth, spike.y);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+            });
+            
+            // Рисуем выход
+            ctx.fillStyle = exit.color;
+            ctx.fillRect(exit.x, exit.y, exit.width, exit.height);
+            
+            // Рисуем дверь на выходе
+            ctx.fillStyle = '#8e44ad';
+            ctx.fillRect(exit.x + 5, exit.y + 5, exit.width - 10, exit.height - 10);
+            ctx.fillStyle = '#f39c12';
+            ctx.beginPath();
+            ctx.arc(exit.x + exit.width - 10, exit.y + exit.height / 2, 5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Рисуем игрока с учетом масштаба
+            const scaledWidth = player.width * playerScale;
+            const scaledHeight = player.height * playerScale;
+            
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x, player.y, scaledWidth, scaledHeight);
+            
+            // Рисуем глаза игрока
+            ctx.fillStyle = 'white';
+            const eyeSize = 5 * playerScale;
+            ctx.fillRect(player.x + 5 * playerScale, player.y + 10 * playerScale, eyeSize, eyeSize);
+            ctx.fillRect(player.x + scaledWidth - 10 * playerScale, player.y + 10 * playerScale, eyeSize, eyeSize);
+            
+            // Рисуем инструкцию
+            // ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            // ctx.fillRect(10, 10, 350, 60);
+            // ctx.fillStyle = 'white';
+            // ctx.font = '14px Arial';
+            // ctx.fillText('Цель: Добраться до желтого выхода', 20, 30);
+            // ctx.fillText('Предупреждение: Широкая яма со скрытыми шипами!', 20, 50);
+            
+            // Если игра неактивна, рисуем затемнение
+            if (!gameActive) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.fillStyle = 'white';
+                ctx.font = '24px Arial';
+                ctx.textAlign = 'center';
+                if (winMessage.style.display === 'block') {
+                    ctx.fillText('ПОБЕДА!', canvas.width / 2, canvas.height / 2 - 20);
+                    ctx.font = '16px Arial';
+                    ctx.fillText('Нажмите "Играть снова" для продолжения', canvas.width / 2, canvas.height / 2 + 20);
+                } else if (loseMessage.style.display === 'block') {
+                    ctx.fillText('ПОРАЖЕНИЕ!', canvas.width / 2, canvas.height / 2 - 20);
+                    ctx.font = '16px Arial';
+                    ctx.fillText('Нажмите "Играть снова" для продолжения', canvas.width / 2, canvas.height / 2 + 20);
+                }
+                ctx.textAlign = 'left';
+            }
+        }
+        
+        // Обновление отладочной информации
+        function updateDebugInfo() {
+            if (showDebugInfo) {
+                playerXElement.textContent = Math.round(player.x);
+                playerYElement.textContent = Math.round(player.y);
+                playerGroundedElement.textContent = player.grounded;
+            }
+        }
+        
+        // Игровой цикл
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Обработчики событий клавиатуры
+        document.addEventListener('keydown', function(e) {
+            if (!gameActive) return;
+            
+            keys[e.keyCode] = true;
+            
+            // Комбинация для открытия консоли: Ctrl+Shift+C
+            if (e.ctrlKey && e.shiftKey && e.keyCode === 67) {
+                e.preventDefault();
+                consoleElement.style.display = 'block';
+                consoleInput.focus();
+            }
+            
+            // ESC для закрытия консоли
+            if (e.keyCode === 27) {
+                consoleElement.style.display = 'none';
+                consoleInput.value = '';
+            }
+        });
+        
+        document.addEventListener('keyup', function(e) {
+            keys[e.keyCode] = false;
+        });
+        
+        // Обработчик ввода в консоль
+        consoleInput.addEventListener('keydown', function(e) {
+            if (e.keyCode === 13) { // Enter
+                const command = consoleInput.value.trim();
+                processCommand(command);
+                consoleInput.value = '';
+                consoleElement.style.display = 'none';
+            }
+        });
+        
+        // Функция обработки команд консоли
+        function processCommand(command) {
+            const parts = command.split(' ');
+            const cmd = parts[0].toLowerCase();
+            
+            if (cmd === '/tp' && parts.length === 3) {
+                const x = parseInt(parts[1]);
+                const y = parseInt(parts[2]);
+                
+                if (!isNaN(x) && !isNaN(y)) {
+                    player.x = x;
+                    player.y = y;
+                }
+            } else if (cmd === '/jumpforce' && parts.length === 2) {
+                const force = parseFloat(parts[1]);
+                
+                if (!isNaN(force) && force > 0) {
+                    player.jumpForce = force;
+                }
+            } else if (cmd === '/playerscale' && parts.length === 2) {
+                const scale = parseFloat(parts[1]);
+                
+                if (!isNaN(scale) && scale > 0 && scale <= 5) {
+                    playerScale = scale;
+                }
+            } else if (cmd === '/viewlog') {
+                // Показать/скрыть информацию об игроке
+                showDebugInfo = !showDebugInfo;
+                debugInfoElement.style.display = showDebugInfo ? 'block' : 'none';
+            } else {
+                alert('Неизвестная команда: ' + command + '\n\nДоступные команды:\n/tp X Y - телепортироваться\n/jumpforce X - изменить силу прыжка\n/playerscale X - изменить размер игрока\n/viewlog - показать/скрыть информацию');
+            }
+        }
+        
+        // Функция сброса игры
+        function resetGame() {
+            player.x = 50;
+            player.y = 300;
+            player.velX = 0;
+            player.velY = 0;
+            player.jumpForce = originalJumpForce;
+            playerScale = originalPlayerScale;
+            gameActive = true;
+        }
+        
+        // Кнопки перезапуска
+        restartButton.addEventListener('click', function() {
+            resetGame();
+            winMessage.style.display = 'none';
+        });
+        
+        restartButtonLose.addEventListener('click', function() {
+            resetGame();
+            loseMessage.style.display = 'none';
+        });
+        
+        // Запуск игры
+        gameLoop();
+    </script>
+</body>
+</html>
