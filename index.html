@@ -179,6 +179,15 @@
             background: #0077b3;
         }
         
+        .source-code-btn {
+            background: #9b59b6;
+            margin-top: 5px;
+        }
+        
+        .source-code-btn:hover, .source-code-btn:active {
+            background: #8e44ad;
+        }
+        
         .debug-info {
             position: absolute;
             top: 10px;
@@ -213,6 +222,41 @@
             max-width: 400px;
         }
         
+        .source-code-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        
+        .source-code-content {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 90%;
+            max-height: 80%;
+            overflow: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        .close-btn {
+            background: #e74c3c;
+            margin-top: 15px;
+        }
+        
+        .close-btn:hover, .close-btn:active {
+            background: #c0392b;
+        }
+        
         @media (max-width: 480px) {
             h1 {
                 font-size: 1.2rem;
@@ -231,6 +275,11 @@
             
             canvas {
                 height: 38vh;
+            }
+            
+            .source-code-content {
+                font-size: 10px;
+                padding: 15px;
             }
         }
         
@@ -303,7 +352,7 @@
             <p>Вы достигли выхода!</p>
             <button id="restartButton">Играть снова</button>
             <div class="footer">
-                    <a href="https://t.me/fbit_unior" target="_blank" style="text-decoration: none;">
+                <a href="https://t.me/fbit_unior" target="_blank" style="text-decoration: none;">
                     <button class="telegram-btn">
                         📢 Присоединиться к Telegram-каналу
                     </button>
@@ -315,6 +364,11 @@
             <h2>Поражение!</h2>
             <p>Вы попали на шипы!</p>
             <button id="restartButtonLose">Играть снова</button>
+            <div id="sourceCodeButtonContainer" style="display: none;">
+                <button class="source-code-btn" id="showSourceCodeBtn">
+                    👁️ Посмотреть исходный код
+                </button>
+            </div>
         </div>
 
         <div class="controls-info">
@@ -334,14 +388,13 @@
             <input type="text" class="console-input" id="consoleInput" placeholder="Введите команду...">
         </div>
     </div>
-    
-    <!-- <div class="footer">
-        <a href="https://t.me/fbit_unior" target="_blank" style="text-decoration: none;">
-            <button class="telegram-btn">
-                📢 Присоединиться к Telegram-каналу
-            </button>
-        </a>
-    </div> -->
+
+    <div class="source-code-modal" id="sourceCodeModal">
+        <div class="source-code-content">
+            <pre id="sourceCodeContent"></pre>
+            <button class="close-btn" id="closeSourceCodeBtn">Закрыть</button>
+        </div>
+    </div>
 
     <script>
         // Получаем элементы
@@ -354,6 +407,11 @@
         const restartButton = document.getElementById('restartButton');
         const restartButtonLose = document.getElementById('restartButtonLose');
         const debugInfoElement = document.getElementById('debugInfo');
+        const sourceCodeButtonContainer = document.getElementById('sourceCodeButtonContainer');
+        const showSourceCodeBtn = document.getElementById('showSourceCodeBtn');
+        const sourceCodeModal = document.getElementById('sourceCodeModal');
+        const sourceCodeContent = document.getElementById('sourceCodeContent');
+        const closeSourceCodeBtn = document.getElementById('closeSourceCodeBtn');
         
         // Сенсорные кнопки
         const btnLeft = document.getElementById('btnLeft');
@@ -370,6 +428,10 @@
         let lastJumpTime = 0;
         const JUMP_TIMEOUT = 1000; // 1 секунда между прыжками
         const JUMP_COUNT_NEEDED = 11; // 11 прыжков подряд
+        
+        // Переменные для отслеживания проигрышей
+        let loseCount = 0;
+        const LOSE_COUNT_NEEDED = 5; // 5 проигрышей для показа кнопки
         
         // Настройка размера canvas
         function resizeCanvas() {
@@ -546,6 +608,15 @@
             if (onSpikes) {
                 gameActive = false;
                 loseMessage.style.display = 'block';
+                
+                // Увеличиваем счетчик проигрышей
+                loseCount++;
+                
+                // Проверяем, нужно ли показать кнопку просмотра исходного кода
+                if (loseCount >= LOSE_COUNT_NEEDED) {
+                    sourceCodeButtonContainer.style.display = 'block';
+                }
+                
                 return;
             }
             
@@ -690,15 +761,6 @@
                 ctx.fillStyle = 'white';
                 ctx.font = '18px Arial';
                 ctx.textAlign = 'center';
-                // if (winMessage.style.display === 'block') {
-                //     ctx.fillText('ПОБЕДА!', canvas.width / 2, canvas.height / 2 - 20);
-                //     ctx.font = '12px Arial';
-                //     ctx.fillText('Нажмите "Играть снова"', canvas.width / 2, canvas.height / 2 + 20);
-                // } else if (loseMessage.style.display === 'block') {
-                //     ctx.fillText('ПОРАЖЕНИЕ!', canvas.width / 2, canvas.height / 2 - 20);
-                //     ctx.font = '12px Arial';
-                //     ctx.fillText('Нажмите "Играть снова"', canvas.width / 2, canvas.height / 2 + 20);
-                // }
                 ctx.textAlign = 'left';
             }
         }
@@ -717,6 +779,36 @@
             update();
             draw();
             requestAnimationFrame(gameLoop);
+        }
+        
+        // Функция для получения исходного кода страницы
+        function getPageSourceCode() {
+            // Получаем весь HTML страницы
+            const htmlContent = document.documentElement.outerHTML;
+            
+            // Форматируем HTML для лучшей читаемости
+            const formattedHTML = htmlContent
+                .replace(/</g, '\n<')
+                .replace(/>/g, '>\n')
+                .replace(/\n\n/g, '\n')
+                .split('\n')
+                .map(line => {
+                    // Добавляем отступы для вложенных элементов
+                    const indent = (line.match(/^<\//) ? -1 : line.match(/^</) ? 1 : 0);
+                    const currentIndent = Math.max(0, (line.match(/^\s*/)[0].length / 2) + indent);
+                    return '  '.repeat(currentIndent) + line.trim();
+                })
+                .join('\n')
+                .trim();
+            
+            return formattedHTML;
+        }
+        
+        // Функция показа исходного кода
+        function showSourceCode() {
+            const sourceCode = getPageSourceCode();
+            sourceCodeContent.textContent = sourceCode;
+            sourceCodeModal.style.display = 'flex';
         }
         
         // Обработчики событий клавиатуры
@@ -788,8 +880,23 @@
                 keys.space = false;
             });
         }
+
+        // Консоль вызывается, если прыгнуть 11 раз
+        // Консоль вызывается, если прыгнуть 11 раз
+        // Консоль вызывается, если прыгнуть 11 раз
+        // Консоль вызывается, если прыгнуть 11 раз
+        // Консоль вызывается, если прыгнуть 11 раз
+        // Консоль вызывается, если прыгнуть 11 раз
+        // Консоль вызывается, если прыгнуть 11 раз
+        // Консоль вызывается, если прыгнуть 11 раз
+        // Консоль вызывается, если прыгнуть 11 раз
+        // Консоль вызывается, если прыгнуть 11 раз
+        // Консоль вызывается, если прыгнуть 11 раз
+        // Консоль вызывается, если прыгнуть 11 раз
+
+
         
-        // Функция обработки команд консоли
+        // Функция обработки команд консоли 
         function processCommand(command) {
             const parts = command.split(' ');
             const cmd = parts[0].toLowerCase();
@@ -844,6 +951,21 @@
         restartButtonLose.addEventListener('click', function() {
             resetGame();
             loseMessage.style.display = 'none';
+        });
+        
+        // Обработчик кнопки показа исходного кода
+        showSourceCodeBtn.addEventListener('click', showSourceCode);
+        
+        // Обработчик кнопки закрытия модального окна
+        closeSourceCodeBtn.addEventListener('click', function() {
+            sourceCodeModal.style.display = 'none';
+        });
+        
+        // Закрытие модального окна при клике вне его
+        sourceCodeModal.addEventListener('click', function(e) {
+            if (e.target === sourceCodeModal) {
+                sourceCodeModal.style.display = 'none';
+            }
         });
         
         // Обработчик изменения размера окна
