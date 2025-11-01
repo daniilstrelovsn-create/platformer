@@ -2,16 +2,22 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>BEAT FBIT - Платформер</title>
     <style>
+        * {
+            box-sizing: border-box;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
         body {
             margin: 0;
-            padding: 20px;
+            padding: 5px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
             min-height: 100vh;
             background: linear-gradient(to bottom, #1a2980, #26d0ce);
             font-family: Arial, sans-serif;
@@ -19,33 +25,93 @@
             overflow: hidden;
         }
         
+        .header {
+            text-align: center;
+            margin-bottom: 5px;
+            width: 100%;
+        }
+        
         h1 {
-            margin-bottom: 10px;
+            margin: 3px 0;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            font-size: 1.4rem;
         }
         
         .game-container {
             position: relative;
-            margin: 20px 0;
+            width: 100%;
+            max-width: 400px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
         }
         
         canvas {
             border: 3px solid #333;
             background: linear-gradient(to bottom, #87CEEB, #E0F7FF);
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            height: 40vh;
+            max-height: 350px;
         }
         
-        .controls {
+        .controls-info {
             background: rgba(0, 0, 0, 0.7);
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 20px;
-            max-width: 600px;
+            padding: 6px;
+            border-radius: 8px;
+            margin: 8px 0;
+            width: 100%;
+            max-width: 400px;
             text-align: center;
+            font-size: 0.8rem;
+        }
+        
+        .touch-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            width: 100%;
+            max-width: 400px;
+            touch-action: none;
+        }
+        
+        .movement-buttons {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .touch-btn {
+            width: 65px;
+            height: 65px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            color: white;
+            user-select: none;
+            -webkit-user-select: none;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        .touch-btn:active {
+            background: rgba(50, 50, 50, 0.7);
+            transform: scale(0.95);
+        }
+        
+        .jump-btn {
+            background: rgba(76, 175, 80, 0.7);
+        }
+        
+        .jump-btn:active {
+            background: rgba(69, 160, 73, 0.7);
         }
         
         .console {
-            position: absolute;
             bottom: 10px;
             left: 10px;
             background: rgba(0, 0, 0, 0.8);
@@ -54,7 +120,8 @@
             border-radius: 5px;
             font-family: monospace;
             display: none;
-            width: 300px;
+            width: 90%;
+            max-width: 300px;
             z-index: 10;
         }
         
@@ -72,31 +139,44 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.8);
-            padding: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
             border-radius: 10px;
             text-align: center;
             display: none;
             z-index: 20;
+            width: 90%;
+            max-width: 280px;
         }
         
         button {
             background: #4CAF50;
             border: none;
             color: white;
-            padding: 10px 20px;
+            padding: 10px 15px;
             text-align: center;
             text-decoration: none;
             display: inline-block;
-            font-size: 16px;
-            margin: 10px 2px;
+            font-size: 14px;
+            margin: 8px 2px;
             cursor: pointer;
             border-radius: 5px;
             transition: background 0.3s;
+            width: 100%;
+            max-width: 180px;
         }
         
-        button:hover {
+        button:hover, button:active {
             background: #45a049;
+        }
+        
+        .telegram-btn {
+            background: #0088cc;
+            margin-top: 10px;
+        }
+        
+        .telegram-btn:hover, .telegram-btn:active {
+            background: #0077b3;
         }
         
         .debug-info {
@@ -104,12 +184,13 @@
             top: 10px;
             right: 10px;
             background: rgba(0, 0, 0, 0.7);
-            padding: 10px;
+            padding: 8px;
             border-radius: 5px;
             font-family: monospace;
-            font-size: 12px;
+            font-size: 11px;
             color: white;
             display: none;
+            max-width: 140px;
         }
         
         .game-status {
@@ -117,22 +198,98 @@
             top: 10px;
             left: 10px;
             background: rgba(0, 0, 0, 0.7);
-            padding: 10px;
+            padding: 8px;
             border-radius: 5px;
             font-family: Arial;
-            font-size: 14px;
+            font-size: 12px;
             color: white;
+            max-width: 180px;
+        }
+        
+        .footer {
+            margin-top: 10px;
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.2rem;
+            }
+            
+            .touch-btn {
+                width: 60px;
+                height: 60px;
+                font-size: 20px;
+            }
+            
+            .game-status, .debug-info {
+                font-size: 11px;
+                padding: 6px;
+            }
+            
+            canvas {
+                height: 38vh;
+            }
+        }
+        
+        @media (max-height: 700px) {
+            h1 {
+                margin: 2px 0;
+                font-size: 1.1rem;
+            }
+            
+            .game-container {
+                margin: 3px 0;
+            }
+            
+            .touch-btn {
+                width: 55px;
+                height: 55px;
+                font-size: 18px;
+            }
+            
+            canvas {
+                height: 36vh;
+            }
+        }
+        
+        @media (max-height: 600px) {
+            canvas {
+                height: 34vh;
+            }
+            
+            .touch-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 16px;
+            }
+            
+            body {
+                padding: 3px;
+            }
+            
+            .header {
+                margin-bottom: 3px;
+            }
+            
+            .footer {
+                margin-top: 5px;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>🎮 BEAT FBIT - Платформер</h1>
+    <div class="header">
+        <h1>🎮 BEAT FBIT - Платформер</h1>
+    </div>
     
     <div class="game-container">
-        <canvas id="gameCanvas" width="800" height="400"></canvas>
+        <canvas id="gameCanvas"></canvas>
         
         <div class="game-status">
-            <div>Доберитесь до выхода, избегая шипов!</div>
+            <div>Доберитесь до выхода!</div>
         </div>
         
         <div class="debug-info" id="debugInfo">
@@ -141,15 +298,17 @@
             <div>Grounded: <span id="playerGrounded">false</span></div>
         </div>
         
-        <div class="console" id="console">
-            <div>Консоль разработчика CTR+SHIFT+C:</div>
-            <input type="text" class="console-input" id="consoleInput" placeholder="Введите команду...">
-        </div>
-        
         <div class="message" id="winMessage">
             <h2>Победа!</h2>
             <p>Вы достигли выхода!</p>
             <button id="restartButton">Играть снова</button>
+            <div class="footer">
+                    <a href="https://t.me/fbit_unior" target="_blank" style="text-decoration: none;">
+                    <button class="telegram-btn">
+                        📢 Присоединиться к Telegram-каналу
+                    </button>
+                </a>
+            </div>
         </div>
         
         <div class="message" id="loseMessage">
@@ -157,13 +316,32 @@
             <p>Вы попали на шипы!</p>
             <button id="restartButtonLose">Играть снова</button>
         </div>
+
+        <div class="controls-info">
+            <p>Используйте кнопки для управления</p>
+        </div>
+
+        <div class="touch-controls">
+            <div class="movement-buttons">
+                <div class="touch-btn" id="btnLeft">←</div>
+                <div class="touch-btn" id="btnRight">→</div>
+            </div>
+            <div class="touch-btn jump-btn" id="btnJump">↑</div>
+        </div>
+
+        <div class="console" id="console">
+            <div>Консоль разработчика:</div>
+            <input type="text" class="console-input" id="consoleInput" placeholder="Введите команду...">
+        </div>
     </div>
     
-    <div class="controls">
-        <h3>Управление:</h3>
-        <p>← → - Движение влево/вправо</p>
-        <p>↑ или Пробел - Прыжок</p>
-    </div>
+    <!-- <div class="footer">
+        <a href="https://t.me/fbit_unior" target="_blank" style="text-decoration: none;">
+            <button class="telegram-btn">
+                📢 Присоединиться к Telegram-каналу
+            </button>
+        </a>
+    </div> -->
 
     <script>
         // Получаем элементы
@@ -177,24 +355,75 @@
         const restartButtonLose = document.getElementById('restartButtonLose');
         const debugInfoElement = document.getElementById('debugInfo');
         
+        // Сенсорные кнопки
+        const btnLeft = document.getElementById('btnLeft');
+        const btnRight = document.getElementById('btnRight');
+        const btnJump = document.getElementById('btnJump');
+        
         // Элементы отладки
         const playerXElement = document.getElementById('playerX');
         const playerYElement = document.getElementById('playerY');
         const playerGroundedElement = document.getElementById('playerGrounded');
+        
+        // Переменные для отслеживания прыжков
+        let jumpCount = 0;
+        let lastJumpTime = 0;
+        const JUMP_TIMEOUT = 1000; // 1 секунда между прыжками
+        const JUMP_COUNT_NEEDED = 11; // 11 прыжков подряд
+        
+        // Настройка размера canvas
+        function resizeCanvas() {
+            const container = document.querySelector('.game-container');
+            const maxWidth = Math.min(400, container.clientWidth - 10);
+            const maxHeight = Math.min(350, window.innerHeight * 0.4);
+            
+            canvas.width = maxWidth;
+            canvas.height = maxHeight;
+            
+            // Обновляем позиции элементов в зависимости от размера canvas
+            updateElementPositions();
+        }
+        
+        // Обновление позиций игровых элементов при изменении размера canvas
+        function updateElementPositions() {
+            // Обновляем позицию выхода
+            exit.x = canvas.width - 50;
+            exit.y = canvas.height - 80;
+            
+            // Обновляем позиции платформ (делаем яму шире)
+            platforms[0].width = canvas.width * 0.25; // Левая платформа уже
+            platforms[1].width = canvas.width * 0.25; // Правая платформа уже
+            platforms[1].x = canvas.width - platforms[1].width;
+            platforms[1].y = canvas.height - 40;
+            platforms[0].y = canvas.height - 40;
+            
+            // Обновляем позицию шипов (широкая яма)
+            spikes[0].x = platforms[0].width;
+            spikes[0].width = canvas.width - platforms[0].width - platforms[1].width;
+            spikes[0].y = canvas.height;
+            
+            // Обновляем позицию игрока, если он за пределами canvas
+            if (player.x > canvas.width) {
+                player.x = canvas.width - player.width * playerScale;
+            }
+            if (player.y > canvas.height) {
+                player.y = canvas.height - player.height * playerScale;
+            }
+        }
         
         // Игровые переменные
         let gameActive = true;
         let showDebugInfo = false;
         let player = {
             x: 50,
-            y: 300,
-            width: 30,
-            height: 50,
-            speed: 5,
+            y: 200,
+            width: 25,
+            height: 40,
+            speed: 2.5, // Уменьшена скорость в 2 раза (было 5)
             velX: 0,
             velY: 0,
             jumping: false,
-            jumpForce: 12,
+            jumpForce: 8, // Уменьшена сила прыжка
             grounded: false,
             color: '#3498db'
         };
@@ -205,8 +434,8 @@
         
         // Платформы и препятствия
         const platforms = [
-            {x: 0, y: 350, width: 200, height: 50, color: '#2ecc71'}, // Левая платформа
-            {x: 600, y: 350, width: 200, height: 50, color: '#2ecc71'}, // Правая платформа
+            {x: 0, y: 350, width: 200, height: 40, color: '#2ecc71'}, // Левая платформа
+            {x: 600, y: 350, width: 200, height: 40, color: '#2ecc71'}, // Правая платформа
         ];
         
         // Шипы под землей (ниже уровня платформ)
@@ -218,8 +447,8 @@
         const exit = {
             x: 750,
             y: 300,
-            width: 30,
-            height: 50,
+            width: 25,
+            height: 40,
             color: '#f1c40f'
         };
         
@@ -237,18 +466,21 @@
             player.velY += gravity;
             
             // Движение влево/вправо
-            if (keys[37] || keys[65]) { // Левая стрелка или A
+            if (keys[37] || keys[65] || keys.left) { // Левая стрелка или A или сенсорная кнопка
                 player.velX = -player.speed;
             }
-            if (keys[39] || keys[68]) { // Правая стрелка или D
+            if (keys[39] || keys[68] || keys.right) { // Правая стрелка или D или сенсорная кнопка
                 player.velX = player.speed;
             }
             
             // Прыжок
-            if ((keys[38] || keys[32] || keys[87]) && player.grounded) { // Вверх, пробел или W
+            if ((keys[38] || keys[32] || keys[87] || keys.up || keys.space) && player.grounded) { // Вверх, пробел или W или сенсорная кнопка
                 player.velY = -player.jumpForce;
                 player.jumping = true;
                 player.grounded = false;
+                
+                // Отслеживание последовательных прыжков
+                trackJumpSequence();
             }
             
             // Применяем скорость
@@ -344,6 +576,27 @@
             updateDebugInfo();
         }
         
+        // Функция отслеживания последовательности прыжков
+        function trackJumpSequence() {
+            const currentTime = Date.now();
+            
+            // Если прошло больше времени, чем JUMP_TIMEOUT, сбрасываем счетчик
+            if (currentTime - lastJumpTime > JUMP_TIMEOUT) {
+                jumpCount = 0;
+            }
+            
+            // Увеличиваем счетчик прыжков
+            jumpCount++;
+            lastJumpTime = currentTime;
+            
+            // Если достигли нужного количества прыжков, открываем консоль
+            if (jumpCount >= JUMP_COUNT_NEEDED) {
+                consoleElement.style.display = 'block';
+                consoleInput.focus();
+                jumpCount = 0; // Сбрасываем счетчик после открытия консоли
+            }
+        }
+        
         // Функция проверки столкновений
         function checkCollision(obj1, obj2) {
             const obj1Right = obj1.x + obj1.width * (obj1 === player ? playerScale : 1);
@@ -364,7 +617,7 @@
             
             // Рисуем фон ямы
             ctx.fillStyle = '#34495e';
-            ctx.fillRect(200, 350, 400, 50);
+            ctx.fillRect(platforms[0].width, canvas.height - 40, spikes[0].width, 40);
             
             // Рисуем платформы
             platforms.forEach(platform => {
@@ -373,17 +626,17 @@
                 
                 // Текстура травы
                 ctx.fillStyle = '#27ae60';
-                ctx.fillRect(platform.x, platform.y, platform.width, 10);
+                ctx.fillRect(platform.x, platform.y, platform.width, 8);
                 
                 // Боковые текстуры платформ
                 ctx.fillStyle = '#239b56';
-                ctx.fillRect(platform.x, platform.y, 10, platform.height);
-                ctx.fillRect(platform.x + platform.width - 10, platform.y, 10, platform.height);
+                ctx.fillRect(platform.x, platform.y, 8, platform.height);
+                ctx.fillRect(platform.x + platform.width - 8, platform.y, 8, platform.height);
             });
             
             // Рисуем землю под платформами
             ctx.fillStyle = '#8B4513';
-            ctx.fillRect(0, 400, canvas.width, 50);
+            ctx.fillRect(0, canvas.height, canvas.width, 50);
             
             // Рисуем шипы под землей (видимые только в отладке)
             spikes.forEach(spike => {
@@ -397,7 +650,7 @@
                 for (let i = 0; i < 20; i++) {
                     ctx.beginPath();
                     ctx.moveTo(spike.x + i * spikeWidth, spike.y);
-                    ctx.lineTo(spike.x + (i + 0.5) * spikeWidth, spike.y - 20);
+                    ctx.lineTo(spike.x + (i + 0.5) * spikeWidth, spike.y - 15);
                     ctx.lineTo(spike.x + (i + 1) * spikeWidth, spike.y);
                     ctx.closePath();
                     ctx.fill();
@@ -410,10 +663,10 @@
             
             // Рисуем дверь на выходе
             ctx.fillStyle = '#8e44ad';
-            ctx.fillRect(exit.x + 5, exit.y + 5, exit.width - 10, exit.height - 10);
+            ctx.fillRect(exit.x + 3, exit.y + 3, exit.width - 6, exit.height - 6);
             ctx.fillStyle = '#f39c12';
             ctx.beginPath();
-            ctx.arc(exit.x + exit.width - 10, exit.y + exit.height / 2, 5, 0, Math.PI * 2);
+            ctx.arc(exit.x + exit.width - 8, exit.y + exit.height / 2, 4, 0, Math.PI * 2);
             ctx.fill();
             
             // Рисуем игрока с учетом масштаба
@@ -425,17 +678,9 @@
             
             // Рисуем глаза игрока
             ctx.fillStyle = 'white';
-            const eyeSize = 5 * playerScale;
-            ctx.fillRect(player.x + 5 * playerScale, player.y + 10 * playerScale, eyeSize, eyeSize);
-            ctx.fillRect(player.x + scaledWidth - 10 * playerScale, player.y + 10 * playerScale, eyeSize, eyeSize);
-            
-            // Рисуем инструкцию
-            // ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-            // ctx.fillRect(10, 10, 350, 60);
-            // ctx.fillStyle = 'white';
-            // ctx.font = '14px Arial';
-            // ctx.fillText('Цель: Добраться до желтого выхода', 20, 30);
-            // ctx.fillText('Предупреждение: Широкая яма со скрытыми шипами!', 20, 50);
+            const eyeSize = 4 * playerScale;
+            ctx.fillRect(player.x + 4 * playerScale, player.y + 8 * playerScale, eyeSize, eyeSize);
+            ctx.fillRect(player.x + scaledWidth - 8 * playerScale, player.y + 8 * playerScale, eyeSize, eyeSize);
             
             // Если игра неактивна, рисуем затемнение
             if (!gameActive) {
@@ -443,17 +688,17 @@
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 
                 ctx.fillStyle = 'white';
-                ctx.font = '24px Arial';
+                ctx.font = '18px Arial';
                 ctx.textAlign = 'center';
-                if (winMessage.style.display === 'block') {
-                    ctx.fillText('ПОБЕДА!', canvas.width / 2, canvas.height / 2 - 20);
-                    ctx.font = '16px Arial';
-                    ctx.fillText('Нажмите "Играть снова" для продолжения', canvas.width / 2, canvas.height / 2 + 20);
-                } else if (loseMessage.style.display === 'block') {
-                    ctx.fillText('ПОРАЖЕНИЕ!', canvas.width / 2, canvas.height / 2 - 20);
-                    ctx.font = '16px Arial';
-                    ctx.fillText('Нажмите "Играть снова" для продолжения', canvas.width / 2, canvas.height / 2 + 20);
-                }
+                // if (winMessage.style.display === 'block') {
+                //     ctx.fillText('ПОБЕДА!', canvas.width / 2, canvas.height / 2 - 20);
+                //     ctx.font = '12px Arial';
+                //     ctx.fillText('Нажмите "Играть снова"', canvas.width / 2, canvas.height / 2 + 20);
+                // } else if (loseMessage.style.display === 'block') {
+                //     ctx.fillText('ПОРАЖЕНИЕ!', canvas.width / 2, canvas.height / 2 - 20);
+                //     ctx.font = '12px Arial';
+                //     ctx.fillText('Нажмите "Играть снова"', canvas.width / 2, canvas.height / 2 + 20);
+                // }
                 ctx.textAlign = 'left';
             }
         }
@@ -508,6 +753,42 @@
             }
         });
         
+        // Обработчики сенсорного управления
+        function setupTouchControls() {
+            // Левая кнопка
+            btnLeft.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                keys.left = true;
+            });
+            
+            btnLeft.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                keys.left = false;
+            });
+            
+            // Правая кнопка
+            btnRight.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                keys.right = true;
+            });
+            
+            btnRight.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                keys.right = false;
+            });
+            
+            // Кнопка прыжка
+            btnJump.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                keys.space = true;
+            });
+            
+            btnJump.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                keys.space = false;
+            });
+        }
+        
         // Функция обработки команд консоли
         function processCommand(command) {
             const parts = command.split(' ');
@@ -545,12 +826,13 @@
         // Функция сброса игры
         function resetGame() {
             player.x = 50;
-            player.y = 300;
+            player.y = canvas.height - 120;
             player.velX = 0;
             player.velY = 0;
             player.jumpForce = originalJumpForce;
             playerScale = originalPlayerScale;
             gameActive = true;
+            jumpCount = 0; // Сбрасываем счетчик прыжков при перезапуске
         }
         
         // Кнопки перезапуска
@@ -564,9 +846,15 @@
             loseMessage.style.display = 'none';
         });
         
+        // Обработчик изменения размера окна
+        window.addEventListener('resize', function() {
+            resizeCanvas();
+        });
+        
         // Запуск игры
+        resizeCanvas();
+        setupTouchControls();
         gameLoop();
     </script>
 </body>
 </html>
-
